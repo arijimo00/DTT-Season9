@@ -1861,58 +1861,56 @@ Player1, Player2, Player3"></textarea>
         }
 
         function exportData() {
-            // Prepare data for export
-            const exportData = {
-                timestamp: new Date().toISOString(),
-                round: auctionState.roundNumber,
-                teams: auctionState.teams.map(team => ({
-                    name: team.name,
-                    budget: team.budget,
-                    players: team.players
-                })),
-                draftedPlayers: auctionState.draftedPlayers,
-                bidHistory: auctionState.bidHistory
-            };
+            // Check if any players have been drafted
+            if (auctionState.draftedPlayers.length === 0) {
+                alert('No players have been drafted yet!');
+                return;
+            }
 
-            // Convert to CSV format
-            let csvContent = "Auction Data Export\n";
-            csvContent += `Date: ${new Date().toLocaleDateString()}\n`;
-            csvContent += `Round: ${auctionState.roundNumber}\n\n`;
+            // Create CSV content for Drafted Players only
+            let csvContent = "Player,Team,Final Bid (k)\n";
+            
+            // Add each drafted player to CSV
+            auctionState.draftedPlayers.forEach(draft => {
+                // Escape commas in player and team names if they exist
+                const playerName = draft.player.includes(',') ? `"${draft.player}"` : draft.player;
+                const teamName = draft.team.includes(',') ? `"${draft.team}"` : draft.team;
+                csvContent += `${playerName},${teamName},${draft.finalBid}\n`;
+            });
 
-            // Team Summary
-            csvContent += "TEAM SUMMARY\n";
-            csvContent += "Team,Remaining Budget,Players Drafted,Total Spent\n";
+            // Add summary statistics at the end
+            csvContent += "\n\nSummary Statistics\n";
+            csvContent += "Team,Players Drafted,Total Spent (k),Budget Remaining (k)\n";
+            
             auctionState.teams.forEach(team => {
                 const totalSpent = 100 - team.budget;
-                csvContent += `${team.name},${team.budget}k,${team.players.length},${totalSpent}k\n`;
+                const playerCount = team.players.length;
+                const teamName = team.name.includes(',') ? `"${team.name}"` : team.name;
+                csvContent += `${teamName},${playerCount},${totalSpent},${team.budget}\n`;
             });
 
-            csvContent += "\nDRAFTED PLAYERS\n";
-            csvContent += "Player,Team,Final Bid\n";
-            auctionState.draftedPlayers.forEach(draft => {
-                csvContent += `${draft.player},${draft.team},${draft.finalBid}k\n`;
-            });
-
-            csvContent += "\nBID HISTORY\n";
-            csvContent += "Timestamp,Player,Team,Bid Amount\n";
-            auctionState.bidHistory.forEach(bid => {
-                csvContent += `${bid.timestamp},${bid.player},${bid.team},${bid.amount}k\n`;
-            });
+            // Create filename with date and round number
+            const date = new Date();
+            const dateStr = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+            const timeStr = `${date.getHours().toString().padStart(2,'0')}-${date.getMinutes().toString().padStart(2,'0')}`;
+            const filename = `drafted_players_${dateStr}_${timeStr}_round${auctionState.roundNumber}.csv`;
 
             // Create download link
-            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `auction_data_round_${auctionState.roundNumber}_${Date.now()}.csv`;
-            a.click();
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up
             window.URL.revokeObjectURL(url);
 
-            alert('Data exported! Check your downloads folder.');
-
-            // Note: For actual Google Sheets integration, you would need to implement
-            // Google Sheets API with proper authentication
-            console.log('For Google Sheets integration, implement API connection here');
+            alert(`Drafted players exported successfully!\nFile: ${filename}`);
         }
 
         // Update Team Rosters Display
